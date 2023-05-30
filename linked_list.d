@@ -200,12 +200,8 @@ mixin template LListBody(Element) {
     return elements[index];
   }
   ref Element get(LinearIndex lindex) in { checkIndex(lindex); } do {
-    ulong i = 0;
-    foreach(LListIndex index; this) {
-      if(i == lindex)
-        return elements[index];
-    }
-    assert(0);
+    LListIndex listIndex = nonlinearizeIndex(lindex);
+    return get(listIndex);
   }
   
   // 0e69355b-cb43-50c6-b8dc-1bc88d7b6f7e
