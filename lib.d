@@ -1,5 +1,14 @@
 module lib;
 
+// 364c8f85-49a7-54cb-955b-d8c44091a701 #todo
+
+template from(string mod) {
+  mixin("import from = " ~ mod ~ ";");
+}
+unittest {
+  string res = from!"std.array".replace("xyyx", "y", "x");
+  mixin(assertString(q"[ res == "xxxx" ]"));
+}
 
 // 107b6052-6d0e-5d72-a977-a2f974e53b34
 struct Stack(T) {
@@ -23,6 +32,27 @@ struct Stack(T) {
   void push(T value) {
     arrayForm ~= value;
   }
+}
+unittest {
+  Stack!int s;
+  s.push(1);
+  s.push(2);
+  s.push(3);
+  mixin(assertString("!s.isEmpty", "s"));
+  
+  int p = s.pop;
+  mixin(assertString("p == 3", "p", "s"));
+  p = s.pop;
+  mixin(assertString("p == 2", "p", "s"));
+  
+  Maybe!int mp = s.popSafe;
+  mixin(assertString("mp.valid", "mp", "s"));
+  mixin(assertString("mp == 1", "mp", "s"));
+  
+  mixin(assertString("s.isEmpty", "s"));
+  
+  mp = s.popSafe;
+  mixin(assertString("!mp.valid", "s"));
 }
 
 // dbb7e8b4-dc97-5875-b78a-67c7d6d5e9c8
@@ -97,9 +127,13 @@ enum NonemptyString[] makeNonempty(string[] array) = (){
 enum T[] literalAs(T, alias array) = (){
   T[] ret;
   foreach(elem; array)
-    ret ~= cast(CustomInt)elem;
+    ret ~= cast(T)elem;
   return ret;
 }();
+unittest {
+  NonemptyString[] strs = literalAs!(NonemptyString, ["asdf", "xyzw"]);
+  mixin(assertString(q"[ strs == ["asdf", "xyzw"] ]"));
+}
 
 // e44747b8-5e5d-57b6-a099-4904d0c22d8f
 struct DebugEmpty { }
@@ -146,18 +180,24 @@ void writeStack() {
 // 9fd54247-bbce-5385-955d-4a39d3429a5f
 string assertString(string msg = "", ulong line = __LINE__)(string expr, string[] otherStrings...) {
   import std.conv : to;
+  string escapedExpr = norEscapeQuotes(expr);
   string ret = "import std.stdio;
   if(!(" ~ expr ~ ")){ // " ~ (line+2).to!string ~ "
     writeln(\"=== Assertion failure, printing stack ===\"); // " ~ (line + 3).to!string ~ "
     writeStack(); // " ~ (line+4).to!string ~ "
-    writeln(\"Assertion failure on line " ~ boldTxt ~ line.to!string ~ noStyle ~ " for " ~ redFg ~ expr ~ noStyle ~ "\"); // " ~ (line+5).to!string ~ "
+    writeln(\"Assertion failure on line " ~ boldTxt ~ line.to!string ~ noStyle ~ " for " ~ redFg ~ escapedExpr ~ noStyle ~ "\"); // " ~ (line+5).to!string ~ "
     writeln(\"Other values:\"); // " ~ (line+6).to!string ~ "\n";
   int lineOffset = 0;
   foreach(string str; otherStrings) {
     lineOffset++;
-    ret ~= "writeln(\"  " ~ greenFg ~ str ~ noStyle ~ " == \", " ~ str ~ "); // " ~ (line + 6 + lineOffset).to!string ~"\n";
+    string escapedStr = norEscapeQuotes(str);
+    ret ~= "writeln(\"  " ~ greenFg ~ escapedStr ~ noStyle ~ " == \", " ~ str ~ "); // " ~ (line + 6 + lineOffset).to!string ~"\n";
   }
   return ret ~ "assert(false, \"" ~ msg ~ "\"); // " ~ (line + lineOffset + 7).to!string ~"\n}";
+}
+unittest {
+  mixin(assertString("1 == 1"));
+  mixin(assertString(q"[ ("a" ~ "b") == "ab" ]"));
 }
 
 // e1c33342-b5d6-5501-9014-077f6bb433e0
@@ -223,6 +263,15 @@ enum bool isNullInit(T) = () {
   else
     return false;
 } ();
+unittest {
+  class Cla {}
+  struct Sct {}
+  mixin(assertString("isNullable!Cla"));
+  mixin(assertString("isNullable!(int*)"));
+  mixin(assertString("isNullable!(void*)"));
+  mixin(assertString("!isNullable!Sct"));
+  mixin(assertString("!isNullable!int"));
+}
 
 // b76550a2-c711-530b-8a4f-fe39f17476d6
 T[] intersect(T)(const(T[]) list1, const(T[]) list2) {
@@ -334,4 +383,28 @@ unittest {
     whichSucceeded = 4;
   });
   mixin(assertString("whichSucceeded == 3", "whichSucceeded"));
+}
+
+
+string readEntireFile(from!"std.stdio".File file) {
+  string retString;
+  foreach(ubyte[] chunk; file.byChunk(1024))
+    retString ~= cast(string)chunk;
+  return retString;
+}
+
+string norEscapeQuotes(string stringToEscape) { // no-regex version of escapeQuotes
+  import std.array : replace;
+  return stringToEscape.replace("\"","\\\"");
+}
+string escapeQuotes(string stringToEscape) {
+  import std.regex : ctRegex, replaceAll;
+  static auto quoteRegex = ctRegex!"\"";
+  return stringToEscape.replaceAll(quoteRegex, "\\$&");
+}
+unittest {
+  string str = q"["asdf"]";
+  string escStr = norEscapeQuotes(str);
+  bool matches = (escStr == q"[\"asdf\"]");
+  mixin(assertString("matches", "str", "escStr"));
 }
