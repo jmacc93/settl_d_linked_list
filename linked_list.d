@@ -1,11 +1,5 @@
 
 
-version(assert) { private {
-  import lib : dbgwritelnMixin, echo, iff, assertString;
-}}
-
-import lib : Maybe, Stack, writeStack;
-
 // 1c693d3c-e5d7-5ab4-85cf-201ceb18c30a
 struct LinearIndex {
   ulong longForm;
@@ -25,7 +19,8 @@ mixin template LListElementBody() {
 
 // 007dc309-4cfe-52d0-b612-17ed4b781764
 mixin template LListBody(Element) {
-  import lib : isNullInit;
+  import lib : isNullInit, Stack;
+  version(assert) import lib: assertString, writeStack;
   static assert(!isNullInit!Element); // no pointers allowed
   
   import std.traits : hasMember;
