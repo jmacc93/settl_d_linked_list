@@ -63,10 +63,10 @@ mixin template LListBody(Element) {
     return availableIndices.pop();
   }
   
-  // 3b085ebd-692c-5ddf-a6dd-71c0ca772ba0
-  LListIndex append(ElemConstructorArgs...)(ElemConstructorArgs conArgs) out { doPostModificationCheck(); } do {
+  LListIndex append(Element newElement) out { doPostModificationCheck(); } do {
     LListIndex newIndex = getAvailableIndex();
-    elements[newIndex] = Element(lastIndex, LListIndex(0), conArgs);
+    newElement.prevIndex = lastIndex;
+    elements[newIndex] = newElement;
     if(length != 0)
       elements[lastIndex].nextIndex = newIndex;
     else
@@ -75,9 +75,10 @@ mixin template LListBody(Element) {
     length++;
     return newIndex;
   }
-  LListIndex prepend(ElemConstructorArgs...)(ElemConstructorArgs conArgs) out { doPostModificationCheck(); } do {
+  LListIndex prepend(Element newElement) out { doPostModificationCheck(); } do {
     LListIndex newIndex = getAvailableIndex();
-    elements[newIndex] = Element(LListIndex(0), firstIndex, conArgs);
+    newElement.nextIndex = firstIndex;
+    elements[newIndex] = newElement;
     if(length != 0)
       elements[firstIndex].prevIndex = newIndex;
     else
@@ -85,6 +86,14 @@ mixin template LListBody(Element) {
     firstIndex = newIndex;
     length++;
     return newIndex;
+  }
+  
+  // 3b085ebd-692c-5ddf-a6dd-71c0ca772ba0
+  LListIndex append(ElemConstructorArgs...)(ElemConstructorArgs conArgs) out { doPostModificationCheck(); } do {
+    return append(Element(conArgs));
+  }
+  LListIndex prepend(ElemConstructorArgs...)(ElemConstructorArgs conArgs) out { doPostModificationCheck(); } do {
+    return prepend(Element(conArgs));
   }
   
   // 611191a7-c0b8-596f-b97d-9519166b5016
@@ -420,8 +429,16 @@ struct LListElement(T) {
   mixin LListElementBody!();
   T value;
   
+  this(T value_) {
+    value = value_;
+  }
+  
   bool opEquals(T other) { return value == other; }
   T opCast(Type : T)() { return value; }
+}
+
+version(unittest) {
+  import lib: assertString, writeStack;
 }
 
 struct LList(T) {
